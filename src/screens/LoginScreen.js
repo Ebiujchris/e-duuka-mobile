@@ -75,6 +75,14 @@ export default function LoginScreen({ navigation }) {
 
           <Button
             mode="text"
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.linkButton}
+          >
+            Forgot Password?
+          </Button>
+
+          <Button
+            mode="text"
             onPress={() => navigation.navigate('Register')}
             style={styles.linkButton}
           >

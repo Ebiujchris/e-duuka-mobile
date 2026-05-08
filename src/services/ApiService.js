@@ -91,6 +91,18 @@ class ApiService {
     return response;
   }
 
+  async forgotPassword(phone) {
+    return this.makeRequest('/auth/forgot-password', 'POST', { phone });
+  }
+
+  async resetPassword(phone, code, newPassword) {
+    return this.makeRequest('/auth/reset-password', 'POST', {
+      phone,
+      code,
+      newPassword,
+    });
+  }
+
   async getCurrentUser() {
     return this.makeRequest('/auth/me');
   }

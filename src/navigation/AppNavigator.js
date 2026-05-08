@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import TabNavigator from './TabNavigator';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import AddProductScreen from '../screens/AddProductScreen';
 import SellProductScreen from '../screens/SellProductScreen';
 
@@ -50,6 +51,11 @@ function AppNavigatorContent() {
             <Stack.Screen
               name="Register"
               component={RegisterScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
               options={{ headerShown: false }}
             />
           </>
