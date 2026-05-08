@@ -25,9 +25,13 @@ export default function ReportsScreen() {
     }, [selectedPeriod])
   );
 
+  useEffect(() => {
+    loadReportData();
+  }, [selectedPeriod]);
+
   const loadReportData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       let startDate, endDate;
       const now = new Date();
 
@@ -49,7 +53,7 @@ export default function ReportsScreen() {
         endDate.toISOString()
       );
 
-      const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
       const totalProfit = sales.reduce((sum, sale) => {
         const buyingPrice = sale.variant?.buyingPrice || sale.product?.buyingPrice || 0;
         return sum + ((sale.unitPrice - buyingPrice) * sale.quantity);
@@ -171,6 +175,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   periodSelector: {
     flexDirection: 'row',
