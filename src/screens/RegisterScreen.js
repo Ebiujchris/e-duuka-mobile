@@ -50,7 +50,16 @@ export default function RegisterScreen({ navigation }) {
       );
       Alert.alert('Success', 'Account created successfully!');
     } catch (error) {
-      Alert.alert('Registration Failed', error.message || 'Could not create account');
+      const errorMessage = error.message || 'Could not create account';
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
+        Alert.alert(
+          'Connection Error',
+          'Server is waking up (this takes 30-60 seconds on first request). Please wait a moment and try again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Registration Failed', errorMessage);
+      }
     } finally {
       setLoading(false);
     }

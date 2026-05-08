@@ -25,7 +25,16 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(normalizedPhone, password);
     } catch (error) {
-      Alert.alert('Login Failed', error.message || 'Invalid credentials');
+      const errorMessage = error.message || 'Invalid credentials';
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
+        Alert.alert(
+          'Connection Error',
+          'Server is waking up (this takes 30-60 seconds on first request). Please wait a moment and try again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Login Failed', errorMessage);
+      }
     } finally {
       setLoading(false);
     }
