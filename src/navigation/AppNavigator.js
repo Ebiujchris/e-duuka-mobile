@@ -4,8 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import TabNavigator from './TabNavigator';
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 import AddProductScreen from '../screens/AddProductScreen';
-import CameraScreen from '../screens/CameraScreen';
 import SellProductScreen from '../screens/SellProductScreen';
 
 const Stack = createNativeStackNavigator();
@@ -35,22 +35,24 @@ function AppNavigatorContent() {
               options={{ title: 'Add Product' }}
             />
             <Stack.Screen
-              name="Camera"
-              component={CameraScreen}
-              options={{ title: 'Scan Product' }}
-            />
-            <Stack.Screen
               name="SellProduct"
               component={SellProductScreen}
               options={{ title: 'Record Sale' }}
             />
           </>
         ) : (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
+          <>
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ headerShown: false }}
+            />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

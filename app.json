@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -22,17 +21,14 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.eduuka.mobile",
-      "versionCode": 1,
-      "permissions": [
-        "CAMERA"
-      ]
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "daf63deb-08e5-494b-a08e-2a7a0f550aa1"
       }
     }
   }

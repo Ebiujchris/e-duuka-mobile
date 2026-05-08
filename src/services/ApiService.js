@@ -1,7 +1,8 @@
 // API Service for E-Duuka Mobile App
 // Handles all backend API calls
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// Production API URL - Deployed on Render
+const API_BASE_URL = 'https://e-duuka-api.onrender.com/api';
 
 class ApiService {
   constructor() {

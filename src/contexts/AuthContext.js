@@ -78,6 +78,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (phone, name, password, shopName, shopLocation, shopInitialCapital) => {
+    const response = await ApiService.register(phone, name, password, shopName, shopLocation, shopInitialCapital);
+    if (response.token) {
+      await AsyncStorage.setItem('authToken', response.token);
+      await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+      setUser(response.user);
+      setIsAuthenticated(true);
+      console.log('Registration successful, user data:', response.user);
+      return response;
+    }
+  };
+
   const logout = async () => {
     console.log('Logout called - starting logout process');
     try {
@@ -104,6 +116,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
+    register,
     logout,
   };
 

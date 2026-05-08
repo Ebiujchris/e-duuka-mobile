@@ -3,11 +3,12 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text, Card } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!phone || !password) {
@@ -51,9 +52,15 @@ export default function LoginScreen() {
             label="Password"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             style={styles.input}
             mode="outlined"
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off' : 'eye'}
+                onPress={() => setShowPassword(!showPassword)}
+              />
+            }
           />
 
           <Button
@@ -64,6 +71,14 @@ export default function LoginScreen() {
             style={styles.button}
           >
             {loading ? 'Signing In...' : 'Sign In'}
+          </Button>
+
+          <Button
+            mode="text"
+            onPress={() => navigation.navigate('Register')}
+            style={styles.linkButton}
+          >
+            Don't have an account? Create one
           </Button>
         </Card.Content>
       </Card>
@@ -100,5 +115,8 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 8,
     paddingVertical: 8,
+  },
+  linkButton: {
+    marginTop: 8,
   },
 });

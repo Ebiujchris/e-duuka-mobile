@@ -231,18 +231,6 @@ export default function DashboardScreen({ navigation }) {
 
           <TouchableOpacity 
             style={[styles.actionCard, styles.secondaryAction]}
-            onPress={() => navigation.navigate('Camera')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.actionContent}>
-              <Ionicons name="camera-outline" size={28} color="#3498db" />
-              <Text style={[styles.actionTitle, { color: '#333' }]}>Scan Product</Text>
-              <Text style={[styles.actionSubtitle, { color: '#666' }]}>Use camera</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.actionCard, styles.secondaryAction]}
             onPress={() => navigation.navigate('Reports')}
             activeOpacity={0.8}
           >
