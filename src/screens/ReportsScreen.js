@@ -13,6 +13,12 @@ export default function ReportsScreen() {
     transactions: 0,
   });
 
+  // Format currency properly
+  const formatCurrency = (amount) => {
+    if (!amount || isNaN(amount)) return '0';
+    return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       loadReportData();
@@ -107,13 +113,13 @@ export default function ReportsScreen() {
         <View style={[styles.metricCard, styles.salesCard]}>
           <Ionicons name="trending-up" size={30} color="#fff" />
           <Text style={styles.metricLabel}>Total Sales</Text>
-          <Text style={styles.metricValue}>UGX {reportData.sales.toLocaleString()}</Text>
+          <Text style={styles.metricValue}>UGX {formatCurrency(reportData.sales)}</Text>
         </View>
 
         <View style={[styles.metricCard, styles.profitCard]}>
           <Ionicons name="cash" size={30} color="#fff" />
           <Text style={styles.metricLabel}>Net Profit</Text>
-          <Text style={styles.metricValue}>UGX {reportData.profit.toLocaleString()}</Text>
+          <Text style={styles.metricValue}>UGX {formatCurrency(reportData.profit)}</Text>
         </View>
       </View>
 
@@ -141,13 +147,13 @@ export default function ReportsScreen() {
         <View style={styles.breakdownCard}>
           <View style={styles.breakdownRow}>
             <Text style={styles.breakdownLabel}>Total Revenue</Text>
-            <Text style={styles.breakdownValue}>UGX {reportData.sales.toLocaleString()}</Text>
+            <Text style={styles.breakdownValue}>UGX {formatCurrency(reportData.sales)}</Text>
           </View>
           
           <View style={styles.breakdownRow}>
             <Text style={styles.breakdownLabel}>Net Profit</Text>
             <Text style={styles.breakdownValue}>
-              UGX {reportData.profit.toLocaleString()}
+              UGX {formatCurrency(reportData.profit)}
             </Text>
           </View>
           
