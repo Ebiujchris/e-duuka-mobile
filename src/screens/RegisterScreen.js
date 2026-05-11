@@ -10,15 +10,13 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [shopName, setShopName] = useState('');
-  const [shopLocation, setShopLocation] = useState('');
-  const [shopInitialCapital, setShopInitialCapital] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleRegister = async () => {
     // Validation
-    if (!phone || !name || !password || !shopName || !shopLocation) {
+    if (!phone || !name || !password || !shopName) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -45,8 +43,8 @@ export default function RegisterScreen({ navigation }) {
         name,
         password,
         shopName,
-        shopLocation,
-        shopInitialCapital ? parseFloat(shopInitialCapital) : 0
+        'Uganda', // Default location
+        0 // Default initial capital
       );
       Alert.alert('Success', 'Account created successfully!');
     } catch (error) {
@@ -71,8 +69,6 @@ export default function RegisterScreen({ navigation }) {
         <Card.Content>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Register your shop with E-DUUKA</Text>
-
-          <Text style={styles.sectionTitle}>Personal Information</Text>
           
           <TextInput
             label="Your Name *"
@@ -89,6 +85,15 @@ export default function RegisterScreen({ navigation }) {
             onChangeText={setPhone}
             keyboardType="phone-pad"
             placeholder="0700000000"
+            style={styles.input}
+            mode="outlined"
+          />
+
+          <TextInput
+            label="Shop Name *"
+            value={shopName}
+            onChangeText={setShopName}
+            placeholder="My Shop"
             style={styles.input}
             mode="outlined"
           />
@@ -121,37 +126,6 @@ export default function RegisterScreen({ navigation }) {
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               />
             }
-          />
-
-          <Text style={styles.sectionTitle}>Shop Information</Text>
-
-          <TextInput
-            label="Shop Name *"
-            value={shopName}
-            onChangeText={setShopName}
-            placeholder="My Shop"
-            style={styles.input}
-            mode="outlined"
-          />
-
-          <TextInput
-            label="Shop Location *"
-            value={shopLocation}
-            onChangeText={setShopLocation}
-            placeholder="Kampala, Uganda"
-            style={styles.input}
-            mode="outlined"
-          />
-
-          <TextInput
-            label="Initial Capital (Optional)"
-            value={shopInitialCapital}
-            onChangeText={setShopInitialCapital}
-            keyboardType="numeric"
-            placeholder="0"
-            style={styles.input}
-            mode="outlined"
-            left={<TextInput.Affix text="UGX " />}
           />
 
           <Button
@@ -199,13 +173,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
     color: '#7f8c8d',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 12,
-    color: '#34495e',
   },
   input: {
     marginBottom: 16,

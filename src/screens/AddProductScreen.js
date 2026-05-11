@@ -30,10 +30,6 @@ export default function AddProductScreen({ navigation }) {
       Alert.alert('Error', 'Please enter both buying and selling prices');
       return;
     }
-    if (!stock) {
-      Alert.alert('Error', 'Please enter stock quantity');
-      return;
-    }
 
     const profit = calculateProfit();
     if (profit <= 0) {
@@ -55,7 +51,7 @@ export default function AddProductScreen({ navigation }) {
         name: name.trim(),
         buyingPrice: parseFloat(buyingPrice),
         sellingPrice: parseFloat(sellingPrice),
-        stockQuantity: parseInt(stock),
+        stockQuantity: stock ? parseFloat(stock) : 0,
         userId: userId,
       };
 
@@ -130,7 +126,7 @@ export default function AddProductScreen({ navigation }) {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Stock Quantity *</Text>
+          <Text style={styles.label}>Stock Quantity (Optional)</Text>
           <TextInput
             style={styles.input}
             placeholder="0"
@@ -175,13 +171,6 @@ export default function AddProductScreen({ navigation }) {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.cameraButton} 
-          onPress={() => navigation.navigate('Camera')}
-        >
-          <Ionicons name="camera-outline" size={24} color="#2196F3" />
-          <Text style={styles.cameraButtonText}>Scan Product with Camera</Text>
-        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -265,22 +254,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cameraButton: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 15,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#800000',
-  },
-  cameraButtonText: {
-    color: '#800000',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
   },
   successBanner: {
     backgroundColor: '#4CAF50',

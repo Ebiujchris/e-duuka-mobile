@@ -2,7 +2,10 @@
 // Handles all backend API calls
 
 // Production API URL - Deployed on Render
-const API_BASE_URL = 'https://e-duuka-api.onrender.com/api';
+// const API_BASE_URL = 'https://e-duuka-api.onrender.com/api';
+
+// Local development API URL
+const API_BASE_URL = 'http://localhost:3001/api';
 
 class ApiService {
   constructor() {
@@ -136,10 +139,6 @@ class ApiService {
     return this.makeRequest(`/products/${id}/stock`, 'PATCH', { quantity });
   }
 
-  async getProductByBarcode(barcode) {
-    return this.makeRequest(`/products/barcode/${barcode}`);
-  }
-
   // Sales
   async getSales() {
     return this.makeRequest('/sales');
@@ -159,6 +158,10 @@ class ApiService {
 
   async deleteSale(id) {
     return this.makeRequest(`/sales/${id}`, 'DELETE');
+  }
+
+  async voidSale(id, reason, notes) {
+    return this.makeRequest(`/sales/${id}/void`, 'POST', { reason, notes });
   }
 
   async getTodaysSales() {

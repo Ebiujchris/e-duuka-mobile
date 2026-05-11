@@ -3,36 +3,23 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import ApiService from '../services/ApiService';
 
 export default function SellProductScreen({ navigation }) {
   const { user } = useAuth();
+  const { products, loadProducts, productsLoading, invalidateProducts } = useData();
   const [selectedProduct, setSelectedProduct] = useState('');
-  const [quantityType, setQuantityType] = useState('units'); // units, kilo, half, quarter
+  const [quantity, setQuantity] = useState('1');
   const [customPrice, setCustomPrice] = useState('');
   const [paymentType, setPaymentType] = useState('cash');
   const [customerName, setCustomerName] = useState('');
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     loadProducts();
   }, []);
-
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const data = await ApiService.getProducts();
-      setProducts(data);
-      console.log('Products loaded:', data);
-    } catch (error) {
-      console.error('Error loading products:', error);
-      Alert.alert('Error', 'Failed to load products. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getSelectedProductData = () => {
     return products.find(p => p.id === selectedProduct);
@@ -42,23 +29,15 @@ export default function SellProductScreen({ navigation }) {
     const product = getSelectedProductData();
     if (!product) return 0;
     
+    const qty = parseFloat(quantity) || 0;
+    
     // If custom price is set, use it
     if (customPrice && parseFloat(customPrice) > 0) {
       return parseFloat(customPrice);
     }
     
-    // Calculate based on quantity type (always 1 unit of that type)
-    switch (quantityType) {
-      case 'kilo':
-        return product.sellingPrice;
-      case 'half':
-        return product.sellingPrice / 2;
-      case 'quarter':
-        return product.sellingPrice / 4;
-      case 'units':
-      default:
-        return product.sellingPrice;
-    }
+    // Calculate based on quantity
+    return product.sellingPrice * qty;
   };
 
   const handleSell = async () => {
@@ -68,10 +47,16 @@ export default function SellProductScreen({ navigation }) {
     }
 
     const product = getSelectedProductData();
+    const qty = parseFloat(quantity);
     
-    // Check stock availability (always 1 unit for units type)
-    if (quantityType === 'units' && product.stockQuantity < 1) {
-      Alert.alert('Error', `Not enough stock. Available: ${product.stockQuantity} units`);
+    if (!qty || qty <= 0) {
+      Alert.alert('Error', 'Please enter a valid quantity');
+      return;
+    }
+    
+    // Check stock availability
+    if (product.stockQuantity < qty) {
+      Alert.alert('Error', `Not enough stock. Available: ${product.stockQuantity} kg`);
       return;
     }
 
@@ -98,19 +83,13 @@ export default function SellProductScreen({ navigation }) {
         return;
       }
       
-      // Calculate actual quantity for stock deduction (always 1 of the selected type)
-      let actualQuantity = 1;
-      if (quantityType === 'half') {
-        actualQuantity = 0.5;
-      } else if (quantityType === 'quarter') {
-        actualQuantity = 0.25;
-      }
-      
       // Create sale data matching API expectations
+      const unitPriceValue = customPrice ? parseFloat(customPrice) / qty : product.sellingPrice;
+      
       const saleData = {
         productId: selectedProduct,
-        quantity: actualQuantity,
-        unitPrice: customPrice ? parseFloat(customPrice) : (total / actualQuantity),
+        quantity: qty,
+        unitPrice: parseFloat(unitPriceValue),
         paymentType: paymentType,
         userId: userId,
         customerName: paymentType === 'credit' ? customerName.trim() : undefined,
@@ -120,26 +99,19 @@ export default function SellProductScreen({ navigation }) {
       const result = await ApiService.createSale(saleData);
       console.log('Sale created successfully:', result);
       
-      // Build success message
-      let quantityText = quantityType;
-      if (quantityType === 'units') {
-        quantityText = '1 unit';
-      } else {
-        quantityText = `1 ${quantityType}`;
-      }
-      
-      const successMsg = `✅ Sale recorded! ${product.name} × ${quantityText} = UGX ${total.toLocaleString()}`;
+      const successMsg = `✅ Sale recorded! ${product.name} × ${qty} kg = UGX ${total.toLocaleString()}`;
       console.log('Setting success message:', successMsg);
       setSuccessMessage(successMsg);
       
       // Clear form
       setSelectedProduct('');
-      setQuantityType('units');
+      setQuantity('1');
       setCustomPrice('');
       setCustomerName('');
       
-      // Reload products to update stock
-      await loadProducts();
+      // Invalidate cache to force refresh
+      invalidateProducts();
+      await loadProducts(true);
       
       // Hide success message after 4 seconds
       setTimeout(() => {
@@ -167,7 +139,7 @@ export default function SellProductScreen({ navigation }) {
         </View>
       ) : null}
 
-      {loading && !successMessage ? (
+      {productsLoading && products.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4CAF50" />
           <Text style={styles.loadingText}>Loading products...</Text>
@@ -204,52 +176,60 @@ export default function SellProductScreen({ navigation }) {
           </View>
         )}
 
-        {/* Quantity Type Selection */}
+        {/* Quantity Input with Quick Buttons */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Select Quantity *</Text>
-          <View style={styles.quantityTypeButtons}>
+          <Text style={styles.label}>Quantity (kg) *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter quantity in kilograms"
+            value={quantity}
+            onChangeText={setQuantity}
+            keyboardType="decimal-pad"
+          />
+          <Text style={styles.helperText}>Quick select:</Text>
+          <View style={styles.quantityButtons}>
             <TouchableOpacity 
-              style={[styles.quantityTypeButton, quantityType === 'units' && styles.activeQuantityType]}
-              onPress={() => setQuantityType('units')}
+              style={styles.quickButton}
+              onPress={() => setQuantity('0.25')}
             >
-              <Text style={[styles.quantityTypeText, quantityType === 'units' && styles.activeQuantityTypeText]}>
-                1 Unit
-              </Text>
+              <Text style={styles.quickButtonText}>¼ kg</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.quantityTypeButton, quantityType === 'kilo' && styles.activeQuantityType]}
-              onPress={() => setQuantityType('kilo')}
+              style={styles.quickButton}
+              onPress={() => setQuantity('0.5')}
             >
-              <Text style={[styles.quantityTypeText, quantityType === 'kilo' && styles.activeQuantityTypeText]}>
-                1 Kilo
-              </Text>
+              <Text style={styles.quickButtonText}>½ kg</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.quantityTypeButton, quantityType === 'half' && styles.activeQuantityType]}
-              onPress={() => setQuantityType('half')}
+              style={styles.quickButton}
+              onPress={() => setQuantity('1')}
             >
-              <Text style={[styles.quantityTypeText, quantityType === 'half' && styles.activeQuantityTypeText]}>
-                Half
-              </Text>
+              <Text style={styles.quickButtonText}>1 kg</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.quantityTypeButton, quantityType === 'quarter' && styles.activeQuantityType]}
-              onPress={() => setQuantityType('quarter')}
+              style={styles.quickButton}
+              onPress={() => setQuantity('2')}
             >
-              <Text style={[styles.quantityTypeText, quantityType === 'quarter' && styles.activeQuantityTypeText]}>
-                Quarter
-              </Text>
+              <Text style={styles.quickButtonText}>2 kg</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.quickButton}
+              onPress={() => setQuantity('3')}
+            >
+              <Text style={styles.quickButtonText}>3 kg</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.quickButton}
+              onPress={() => setQuantity('5')}
+            >
+              <Text style={styles.quickButtonText}>5 kg</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.helperText}>
-            {quantityType === 'units' && 'Full unit at regular price'}
-            {quantityType === 'kilo' && 'One kilogram at regular price'}
-            {quantityType === 'half' && 'Half portion at 50% of price'}
-            {quantityType === 'quarter' && 'Quarter portion at 25% of price'}
-          </Text>
         </View>
 
         {/* Custom Price (Optional) */}
@@ -424,32 +404,24 @@ const styles = StyleSheet.create({
   activePaymentText: {
     color: '#fff',
   },
-  quantityTypeButtons: {
+  quantityButtons: {
     flexDirection: 'row',
     gap: 8,
     flexWrap: 'wrap',
+    marginTop: 8,
   },
-  quantityTypeButton: {
+  quickButton: {
     flex: 1,
-    minWidth: '22%',
+    minWidth: '15%',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-  },
-  activeQuantityType: {
     backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
   },
-  quantityTypeText: {
-    fontSize: 14,
+  quickButtonText: {
+    fontSize: 13,
     fontWeight: 'bold',
-    color: '#333',
-  },
-  activeQuantityTypeText: {
     color: '#fff',
   },
   helperText: {
