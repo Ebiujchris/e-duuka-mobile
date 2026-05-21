@@ -1,11 +1,14 @@
 // API Service for E-Duuka Mobile App
-// Handles all backend API calls
+// Handles all backend API calls with offline fallback support
+
+import networkService from './NetworkService';
+import offlineStorageService from './OfflineStorageService';
 
 // Production API URL - Deployed on Render
-// const API_BASE_URL = 'https://e-duuka-api.onrender.com/api';
+const API_BASE_URL = 'https://e-duuka-api.onrender.com/api';
 
-// Local development API URL
-const API_BASE_URL = 'http://localhost:3001/api';
+// Local development API URL (only works on computer)
+// const API_BASE_URL = 'http://localhost:3001/api';
 
 class ApiService {
   constructor() {
@@ -32,7 +35,7 @@ class ApiService {
     this.token = null;
   }
 
-  async makeRequest(endpoint, method = 'GET', body = null) {
+  async makeRequest(endpoint, method = 'GET', body = null, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
     const headers = {
       'Content-Type': 'application/json',
@@ -52,7 +55,48 @@ class ApiService {
       config.body = JSON.stringify(body);
     }
 
+    // Check if online
+    const isOnline = networkService.getIsOnline();
+    
     try {
+      // If offline and not a GET request, queue the operation instead
+      if (!isOnline && method !== 'GET') {
+        console.log(`📱 Offline detected for ${method} request, queuing: ${endpoint}`);
+        
+        // Queue this operation for later sync
+        const operation = {
+          type: `${method.toLowerCase()}_${endpoint.split('/')[1] || 'unknown'}`,
+          resourceType: endpoint.split('/')[1],
+          resourceId: options.resourceId,
+          method,
+          endpoint,
+          data: body,
+        };
+        
+        await offlineStorageService.addToSyncQueue(operation);
+        
+        // Return a pending response
+        return {
+          success: true,
+          offline: true,
+          message: 'Operation saved. Will sync when online.',
+          data: body, // Return the submitted data
+          timestamp: Date.now(),
+        };
+      }
+
+      // If offline and GET request, try to get cached data
+      if (!isOnline && method === 'GET') {
+        console.log(`📱 Offline detected for GET request, loading from cache: ${endpoint}`);
+        const cached = await this.getCachedData(endpoint);
+        if (cached) {
+          return cached;
+        }
+        // No cache available
+        throw new Error('No internet connection and no cached data available');
+      }
+
+      // Make the actual request (online)
       const response = await fetch(url, config);
 
       if (!response.ok) {
@@ -64,10 +108,69 @@ class ApiService {
         throw new Error(error.message || `API error: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      
+      // Cache GET responses
+      if (method === 'GET') {
+        await this.cacheData(endpoint, data);
+      }
+
+      return data;
     } catch (error) {
-      console.error(`API Error: ${endpoint}`, error);
+      console.error(`API Error: ${endpoint}`, error.message);
+      
+      // If online request failed but we have cache, return cached data
+      if (isOnline && method === 'GET') {
+        const cached = await this.getCachedData(endpoint);
+        if (cached) {
+          console.log(`Returning cached data for failed request: ${endpoint}`);
+          return cached;
+        }
+      }
+      
       throw error;
+    }
+  }
+
+  /**
+   * Cache API response
+   */
+  async cacheData(endpoint, data) {
+    try {
+      const cacheKey = `cache_${endpoint}`;
+      await require('@react-native-async-storage/async-storage').default.setItem(
+        cacheKey,
+        JSON.stringify({
+          data,
+          timestamp: Date.now(),
+        })
+      );
+    } catch (error) {
+      console.warn('Failed to cache data:', error);
+    }
+  }
+
+  /**
+   * Get cached API response
+   */
+  async getCachedData(endpoint) {
+    try {
+      const cacheKey = `cache_${endpoint}`;
+      const cached = await require('@react-native-async-storage/async-storage').default.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        const maxAge = 30 * 60 * 1000; // 30 minutes
+        
+        if (age < maxAge) {
+          console.log(`Cache valid (${Math.round(age / 1000)}s old): ${endpoint}`);
+          return data;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.warn('Failed to get cached data:', error);
+      return null;
     }
   }
 
@@ -141,7 +244,10 @@ class ApiService {
 
   // Sales
   async getSales() {
-    return this.makeRequest('/sales');
+    const data = await this.makeRequest('/sales');
+    // Cache to offline storage
+    await offlineStorageService.getExpenses; // Initialize if needed
+    return data;
   }
 
   async getSale(id) {
@@ -149,19 +255,69 @@ class ApiService {
   }
 
   async createSale(saleData) {
-    return this.makeRequest('/sales', 'POST', saleData);
+    try {
+      const response = await this.makeRequest('/sales', 'POST', saleData, {
+        resourceId: `sale_${Date.now()}`,
+      });
+      
+      // Store locally for offline reference
+      if (networkService.getIsOnline()) {
+        await offlineStorageService.storeSale({
+          ...saleData,
+          id: response.id,
+          synced: true,
+        });
+      }
+      
+      return response;
+    } catch (error) {
+      // If offline, store locally and queue
+      if (!networkService.getIsOnline()) {
+        const localSale = await offlineStorageService.storeSale({
+          ...saleData,
+          id: `temp_${Date.now()}`,
+          offline: true,
+          createdAt: new Date().toISOString(),
+        });
+        console.log('Sale stored offline:', localSale);
+        return localSale;
+      }
+      throw error;
+    }
   }
 
   async updateSale(id, saleData) {
-    return this.makeRequest(`/sales/${id}`, 'PATCH', saleData);
+    try {
+      const response = await this.makeRequest(`/sales/${id}`, 'PATCH', saleData, {
+        resourceId: id,
+      });
+      
+      if (networkService.getIsOnline()) {
+        await offlineStorageService.storeSale({ ...saleData, id, synced: true });
+      }
+      
+      return response;
+    } catch (error) {
+      if (!networkService.getIsOnline()) {
+        await offlineStorageService.storeSale({
+          ...saleData,
+          id,
+          offline: true,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      throw error;
+    }
   }
 
   async deleteSale(id) {
-    return this.makeRequest(`/sales/${id}`, 'DELETE');
+    return this.makeRequest(`/sales/${id}`, 'DELETE', null, { resourceId: id });
   }
 
   async voidSale(id, reason, notes) {
-    return this.makeRequest(`/sales/${id}/void`, 'POST', { reason, notes });
+    return this.makeRequest(`/sales/${id}/void`, 'POST', { reason, notes }, {
+      resourceId: id,
+    });
   }
 
   async getTodaysSales() {
@@ -186,15 +342,60 @@ class ApiService {
   }
 
   async createCredit(creditData) {
-    return this.makeRequest('/credits', 'POST', creditData);
+    try {
+      const response = await this.makeRequest('/credits', 'POST', creditData, {
+        resourceId: `credit_${Date.now()}`,
+      });
+      
+      if (networkService.getIsOnline()) {
+        await offlineStorageService.storeCredit({
+          ...creditData,
+          id: response.id,
+          synced: true,
+        });
+      }
+      
+      return response;
+    } catch (error) {
+      if (!networkService.getIsOnline()) {
+        const localCredit = await offlineStorageService.storeCredit({
+          ...creditData,
+          id: `temp_${Date.now()}`,
+          offline: true,
+          createdAt: new Date().toISOString(),
+        });
+        return localCredit;
+      }
+      throw error;
+    }
   }
 
   async updateCredit(id, creditData) {
-    return this.makeRequest(`/credits/${id}`, 'PATCH', creditData);
+    try {
+      const response = await this.makeRequest(`/credits/${id}`, 'PATCH', creditData, {
+        resourceId: id,
+      });
+      
+      if (networkService.getIsOnline()) {
+        await offlineStorageService.storeCredit({ ...creditData, id, synced: true });
+      }
+      
+      return response;
+    } catch (error) {
+      if (!networkService.getIsOnline()) {
+        await offlineStorageService.storeCredit({
+          ...creditData,
+          id,
+          offline: true,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      throw error;
+    }
   }
 
   async deleteCredit(id) {
-    return this.makeRequest(`/credits/${id}`, 'DELETE');
+    return this.makeRequest(`/credits/${id}`, 'DELETE', null, { resourceId: id });
   }
 
   async getPendingCredits() {
@@ -206,7 +407,22 @@ class ApiService {
   }
 
   async payCredit(id, amount) {
-    return this.makeRequest(`/credits/${id}/pay`, 'POST', { amount });
+    try {
+      const response = await this.makeRequest(`/credits/${id}/pay`, 'POST', { amount }, {
+        resourceId: id,
+      });
+      return response;
+    } catch (error) {
+      if (!networkService.getIsOnline()) {
+        await offlineStorageService.addToSyncQueue({
+          type: 'pay_credit',
+          resourceType: 'credits',
+          resourceId: id,
+          data: { amount },
+        });
+      }
+      throw error;
+    }
   }
 
   async getCreditStats() {
@@ -244,15 +460,64 @@ class ApiService {
   }
 
   async createExpense(expenseData) {
-    return this.makeRequest('/expenses', 'POST', expenseData);
+    try {
+      const response = await this.makeRequest('/expenses', 'POST', expenseData, {
+        resourceId: `expense_${Date.now()}`,
+      });
+      
+      if (networkService.getIsOnline()) {
+        await offlineStorageService.storeExpense({
+          ...expenseData,
+          id: response.id,
+          synced: true,
+        });
+      }
+      
+      return response;
+    } catch (error) {
+      if (!networkService.getIsOnline()) {
+        const localExpense = await offlineStorageService.storeExpense({
+          ...expenseData,
+          id: `temp_${Date.now()}`,
+          offline: true,
+          createdAt: new Date().toISOString(),
+        });
+        return localExpense;
+      }
+      throw error;
+    }
   }
 
   async updateExpense(id, expenseData) {
-    return this.makeRequest(`/expenses/${id}`, 'PATCH', expenseData);
+    try {
+      const response = await this.makeRequest(`/expenses/${id}`, 'PATCH', expenseData, {
+        resourceId: id,
+      });
+      
+      if (networkService.getIsOnline()) {
+        await offlineStorageService.storeExpense({
+          ...expenseData,
+          id,
+          synced: true,
+        });
+      }
+      
+      return response;
+    } catch (error) {
+      if (!networkService.getIsOnline()) {
+        await offlineStorageService.storeExpense({
+          ...expenseData,
+          id,
+          offline: true,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      throw error;
+    }
   }
 
   async deleteExpense(id) {
-    return this.makeRequest(`/expenses/${id}`, 'DELETE');
+    return this.makeRequest(`/expenses/${id}`, 'DELETE', null, { resourceId: id });
   }
 
   async getExpensesByDateRange(startDate, endDate) {

@@ -178,15 +178,15 @@ export default function SellProductScreen({ navigation }) {
 
         {/* Quantity Input with Quick Buttons */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Quantity (kg) *</Text>
+          <Text style={styles.label}>Quantity *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter quantity in kilograms"
+            placeholder="Enter quantity (e.g., 1, 2, 5, 10)"
             value={quantity}
             onChangeText={setQuantity}
             keyboardType="decimal-pad"
           />
-          <Text style={styles.helperText}>Quick select:</Text>
+          <Text style={styles.helperText}>Quick select for weight-based items:</Text>
           <View style={styles.quantityButtons}>
             <TouchableOpacity 
               style={styles.quickButton}
@@ -208,28 +208,10 @@ export default function SellProductScreen({ navigation }) {
             >
               <Text style={styles.quickButtonText}>1 kg</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.quickButton}
-              onPress={() => setQuantity('2')}
-            >
-              <Text style={styles.quickButtonText}>2 kg</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.quickButton}
-              onPress={() => setQuantity('3')}
-            >
-              <Text style={styles.quickButtonText}>3 kg</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.quickButton}
-              onPress={() => setQuantity('5')}
-            >
-              <Text style={styles.quickButtonText}>5 kg</Text>
-            </TouchableOpacity>
           </View>
+          <Text style={styles.helperText}>
+            For items (biscuits, sodas, etc.), just type the number: 1, 2, 5, 10, etc.
+          </Text>
         </View>
 
         {/* Custom Price (Optional) */}
@@ -407,20 +389,18 @@ const styles = StyleSheet.create({
   quantityButtons: {
     flexDirection: 'row',
     gap: 8,
-    flexWrap: 'wrap',
     marginTop: 8,
   },
   quickButton: {
     flex: 1,
-    minWidth: '15%',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    padding: 12,
     borderRadius: 8,
     backgroundColor: '#2196F3',
   },
   quickButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#fff',
   },

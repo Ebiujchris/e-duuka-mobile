@@ -4,10 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import ApiService from '../services/ApiService';
 
 export default function DashboardScreen({ navigation }) {
   const { logout, user, isAuthenticated } = useAuth();
+  const { sales: cachedSales, loadSales, salesLoading } = useData();
   const [todaysSales, setTodaysSales] = useState(0);
   const [todaysProfit, setTodaysProfit] = useState(0);
   const [lowStockItems, setLowStockItems] = useState(0);
@@ -32,22 +34,30 @@ export default function DashboardScreen({ navigation }) {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      // Fetch today's sales
-      const sales = await ApiService.getTodaysSales();
-      const totalSales = Array.isArray(sales) 
-        ? sales.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0)
-        : 0;
+      
+      // Load sales from cache
+      await loadSales();
+      
+      // Filter today's active sales from cached data
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      
+      const todaysSalesData = (cachedSales || []).filter(sale => {
+        const saleDate = new Date(sale.createdAt);
+        return saleDate >= startOfDay && saleDate < endOfDay && sale.status !== 'voided';
+      });
+      
+      const totalSales = todaysSalesData.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
       setTodaysSales(totalSales);
 
-      // Calculate today's profit
-      const totalProfit = Array.isArray(sales)
-        ? sales.reduce((sum, sale) => {
-            const buyingPrice = Number(sale.product?.buyingPrice) || 0;
-            const unitPrice = Number(sale.unitPrice) || 0;
-            const quantity = Number(sale.quantity) || 0;
-            return sum + ((unitPrice - buyingPrice) * quantity);
-          }, 0)
-        : 0;
+      // Calculate today's profit (excluding voided sales)
+      const totalProfit = todaysSalesData.reduce((sum, sale) => {
+        const buyingPrice = Number(sale.product?.buyingPrice) || 0;
+        const unitPrice = Number(sale.unitPrice) || 0;
+        const quantity = Number(sale.quantity) || 0;
+        return sum + ((unitPrice - buyingPrice) * quantity);
+      }, 0);
       setTodaysProfit(totalProfit);
 
       // Fetch low stock products
@@ -63,6 +73,31 @@ export default function DashboardScreen({ navigation }) {
       setLoading(false);
     }
   };
+
+  // Recalculate when cached sales change
+  useEffect(() => {
+    if (cachedSales && cachedSales.length > 0) {
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      
+      const todaysSalesData = cachedSales.filter(sale => {
+        const saleDate = new Date(sale.createdAt);
+        return saleDate >= startOfDay && saleDate < endOfDay && sale.status !== 'voided';
+      });
+      
+      const totalSales = todaysSalesData.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
+      setTodaysSales(totalSales);
+
+      const totalProfit = todaysSalesData.reduce((sum, sale) => {
+        const buyingPrice = Number(sale.product?.buyingPrice) || 0;
+        const unitPrice = Number(sale.unitPrice) || 0;
+        const quantity = Number(sale.quantity) || 0;
+        return sum + ((unitPrice - buyingPrice) * quantity);
+      }, 0);
+      setTodaysProfit(totalProfit);
+    }
+  }, [cachedSales]);
 
   useEffect(() => {
     Animated.parallel([

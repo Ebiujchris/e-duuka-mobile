@@ -44,11 +44,16 @@ export const DataProvider = ({ children }) => {
       setProducts(data);
       setLastProductsFetch(Date.now());
       
-      // Cache to AsyncStorage
-      await AsyncStorage.setItem('cached_products', JSON.stringify({
-        data,
-        timestamp: Date.now()
-      }));
+      // Cache to AsyncStorage with error handling
+      try {
+        await AsyncStorage.setItem('cached_products', JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+      } catch (cacheError) {
+        console.warn('Failed to cache products:', cacheError);
+        // Continue even if caching fails
+      }
       
       return data;
     } catch (error) {
@@ -58,12 +63,15 @@ export const DataProvider = ({ children }) => {
       try {
         const cached = await AsyncStorage.getItem('cached_products');
         if (cached) {
-          const { data } = JSON.parse(cached);
-          setProducts(data);
-          return data;
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.data && Array.isArray(parsed.data)) {
+            setProducts(parsed.data);
+            return parsed.data;
+          }
         }
       } catch (cacheError) {
         console.error('Cache error:', cacheError);
+        await AsyncStorage.removeItem('cached_products');
       }
       
       throw error;
@@ -85,11 +93,16 @@ export const DataProvider = ({ children }) => {
       setSales(data);
       setLastSalesFetch(Date.now());
       
-      // Cache to AsyncStorage
-      await AsyncStorage.setItem('cached_sales', JSON.stringify({
-        data,
-        timestamp: Date.now()
-      }));
+      // Cache to AsyncStorage with error handling
+      try {
+        await AsyncStorage.setItem('cached_sales', JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+      } catch (cacheError) {
+        console.warn('Failed to cache sales:', cacheError);
+        // Continue even if caching fails
+      }
       
       return data;
     } catch (error) {
@@ -99,12 +112,15 @@ export const DataProvider = ({ children }) => {
       try {
         const cached = await AsyncStorage.getItem('cached_sales');
         if (cached) {
-          const { data } = JSON.parse(cached);
-          setSales(data);
-          return data;
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.data && Array.isArray(parsed.data)) {
+            setSales(parsed.data);
+            return parsed.data;
+          }
         }
       } catch (cacheError) {
         console.error('Cache error:', cacheError);
+        await AsyncStorage.removeItem('cached_sales');
       }
       
       throw error;
@@ -126,11 +142,16 @@ export const DataProvider = ({ children }) => {
       setCredits(data);
       setLastCreditsFetch(Date.now());
       
-      // Cache to AsyncStorage
-      await AsyncStorage.setItem('cached_credits', JSON.stringify({
-        data,
-        timestamp: Date.now()
-      }));
+      // Cache to AsyncStorage with error handling
+      try {
+        await AsyncStorage.setItem('cached_credits', JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+      } catch (cacheError) {
+        console.warn('Failed to cache credits:', cacheError);
+        // Continue even if caching fails
+      }
       
       return data;
     } catch (error) {
@@ -140,12 +161,15 @@ export const DataProvider = ({ children }) => {
       try {
         const cached = await AsyncStorage.getItem('cached_credits');
         if (cached) {
-          const { data } = JSON.parse(cached);
-          setCredits(data);
-          return data;
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.data && Array.isArray(parsed.data)) {
+            setCredits(parsed.data);
+            return parsed.data;
+          }
         }
       } catch (cacheError) {
         console.error('Cache error:', cacheError);
+        await AsyncStorage.removeItem('cached_credits');
       }
       
       throw error;
@@ -178,30 +202,75 @@ export const DataProvider = ({ children }) => {
         ]);
 
         if (cachedProducts) {
-          const { data, timestamp } = JSON.parse(cachedProducts);
-          if (Date.now() - timestamp < CACHE_DURATION) {
-            setProducts(data);
-            setLastProductsFetch(timestamp);
+          try {
+            const parsed = JSON.parse(cachedProducts);
+            
+            // Validate structure
+            if (parsed && parsed.data && Array.isArray(parsed.data) && parsed.timestamp) {
+              const { data, timestamp } = parsed;
+              if (Date.now() - timestamp < CACHE_DURATION) {
+                setProducts(data);
+                setLastProductsFetch(timestamp);
+              }
+            } else {
+              console.warn('Invalid cached products structure, clearing...');
+              await AsyncStorage.removeItem('cached_products');
+            }
+          } catch (parseError) {
+            console.error('Error parsing cached products:', parseError);
+            await AsyncStorage.removeItem('cached_products');
           }
         }
 
         if (cachedSales) {
-          const { data, timestamp } = JSON.parse(cachedSales);
-          if (Date.now() - timestamp < CACHE_DURATION) {
-            setSales(data);
-            setLastSalesFetch(timestamp);
+          try {
+            const parsed = JSON.parse(cachedSales);
+            
+            // Validate structure
+            if (parsed && parsed.data && Array.isArray(parsed.data) && parsed.timestamp) {
+              const { data, timestamp } = parsed;
+              if (Date.now() - timestamp < CACHE_DURATION) {
+                setSales(data);
+                setLastSalesFetch(timestamp);
+              }
+            } else {
+              console.warn('Invalid cached sales structure, clearing...');
+              await AsyncStorage.removeItem('cached_sales');
+            }
+          } catch (parseError) {
+            console.error('Error parsing cached sales:', parseError);
+            await AsyncStorage.removeItem('cached_sales');
           }
         }
 
         if (cachedCredits) {
-          const { data, timestamp } = JSON.parse(cachedCredits);
-          if (Date.now() - timestamp < CACHE_DURATION) {
-            setCredits(data);
-            setLastCreditsFetch(timestamp);
+          try {
+            const parsed = JSON.parse(cachedCredits);
+            
+            // Validate structure
+            if (parsed && parsed.data && Array.isArray(parsed.data) && parsed.timestamp) {
+              const { data, timestamp } = parsed;
+              if (Date.now() - timestamp < CACHE_DURATION) {
+                setCredits(data);
+                setLastCreditsFetch(timestamp);
+              }
+            } else {
+              console.warn('Invalid cached credits structure, clearing...');
+              await AsyncStorage.removeItem('cached_credits');
+            }
+          } catch (parseError) {
+            console.error('Error parsing cached credits:', parseError);
+            await AsyncStorage.removeItem('cached_credits');
           }
         }
       } catch (error) {
         console.error('Error loading initial cache:', error);
+        // Clear all cache on critical error
+        try {
+          await AsyncStorage.multiRemove(['cached_products', 'cached_sales', 'cached_credits']);
+        } catch (clearError) {
+          console.error('Failed to clear corrupted cache:', clearError);
+        }
       }
     };
 

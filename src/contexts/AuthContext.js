@@ -35,10 +35,19 @@ export const AuthProvider = ({ children }) => {
         if (storedUserData) {
           try {
             const userData = JSON.parse(storedUserData);
-            setUser(userData);
-            console.log('Loaded user from storage:', userData);
+            
+            // Validate user data structure
+            if (userData && typeof userData === 'object' && userData.id) {
+              setUser(userData);
+              console.log('Loaded user from storage:', userData);
+            } else {
+              console.warn('Invalid user data structure, clearing...');
+              await AsyncStorage.removeItem('userData');
+            }
           } catch (e) {
             console.error('Failed to parse stored user data:', e);
+            // Clear corrupted data
+            await AsyncStorage.removeItem('userData');
           }
         }
         
@@ -47,19 +56,41 @@ export const AuthProvider = ({ children }) => {
           const userData = await ApiService.getCurrentUser();
           setUser(userData);
           setIsAuthenticated(true);
+          
+          // Update stored user data
+          await AsyncStorage.setItem('userData', JSON.stringify(userData));
         } catch (error) {
           // Only clear token on 401 (unauthorized), not on network errors
           if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
             await AsyncStorage.removeItem('authToken');
             await AsyncStorage.removeItem('userData');
             ApiService.clearToken();
+            setUser(null);
+            setIsAuthenticated(false);
           } else {
             // Keep user logged in even if verification fails (network issues, etc.)
+            // Use already loaded user data from storage
             setIsAuthenticated(true);
             console.warn('Token verification failed, but keeping user authenticated:', error.message);
           }
         }
+      } else {
+        // No token, user is not authenticated
+        setUser(null);
+        setIsAuthenticated(false);
       }
+    } catch (error) {
+      console.error('Critical error in checkAuthStatus:', error);
+      // Clear everything on critical error
+      try {
+        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('userData');
+        ApiService.clearToken();
+      } catch (clearError) {
+        console.error('Failed to clear auth data:', clearError);
+      }
+      setUser(null);
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }

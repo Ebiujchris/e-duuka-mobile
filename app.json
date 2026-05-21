@@ -2,7 +2,7 @@
   "expo": {
     "name": "E-Duuka",
     "slug": "e-duuka-mobile",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
         "backgroundColor": "#800000"
       },
       "package": "com.eduuka.mobile",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "favicon": "./assets/app-icon.png"

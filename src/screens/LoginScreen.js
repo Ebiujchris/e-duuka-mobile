@@ -9,6 +9,7 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const handleLogin = async () => {
     if (!phone || !password) {
@@ -22,21 +23,40 @@ export default function LoginScreen({ navigation }) {
       : phone;
 
     setLoading(true);
+    
     try {
       await login(normalizedPhone, password);
     } catch (error) {
       const errorMessage = error.message || 'Invalid credentials';
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
-        Alert.alert(
-          'Connection Error',
-          'Server is waking up (this takes 30-60 seconds on first request). Please wait a moment and try again.',
-          [{ text: 'OK' }]
-        );
+      
+      // Check if it's a connection/network error (server sleeping)
+      if (errorMessage.includes('Failed to fetch') || 
+          errorMessage.includes('Network') || 
+          errorMessage.includes('ECONNREFUSED') ||
+          errorMessage.includes('500') ||
+          errorMessage.includes('Internal server error')) {
+        
+        // Auto-retry after 5 seconds
+        if (retryCount < 10) {
+          setTimeout(() => {
+            setRetryCount(retryCount + 1);
+            handleLogin();
+          }, 5000);
+        } else {
+          setLoading(false);
+          setRetryCount(0);
+          Alert.alert(
+            'Connection Timeout',
+            'Unable to connect to server. Please try again in a moment.',
+            [{ text: 'OK' }]
+          );
+        }
       } else {
+        // Real error (wrong credentials, etc.)
+        setLoading(false);
+        setRetryCount(0);
         Alert.alert('Login Failed', errorMessage);
       }
-    } finally {
-      setLoading(false);
     }
   };
 

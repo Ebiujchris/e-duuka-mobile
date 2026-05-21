@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import TabNavigator from './TabNavigator';
 import LoginScreen from '../screens/LoginScreen';
@@ -11,17 +12,28 @@ import SellProductScreen from '../screens/SellProductScreen';
 
 const Stack = createNativeStackNavigator();
 
+// Loading screen component - always visible during auth check
+function LoadingScreen() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <ActivityIndicator size="large" color="#800000" />
+      <Text style={{ marginTop: 10, color: '#666' }}>Loading...</Text>
+    </View>
+  );
+}
+
 function AppNavigatorContent() {
   const { isAuthenticated, loading } = useAuth();
 
   console.log('AppNavigator re-rendering - isAuthenticated:', isAuthenticated, 'loading:', loading);
 
+  // ✅ CRITICAL FIX: Show loading screen instead of returning null
   if (loading) {
-    return null;
+    return <LoadingScreen />;
   }
 
   return (
-    <NavigationContainer key={isAuthenticated ? 'auth' : 'guest'}>
+    <NavigationContainer>
       <Stack.Navigator screenOptions={{ animationEnabled: false }}>
         {isAuthenticated ? (
           <>

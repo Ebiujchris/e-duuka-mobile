@@ -119,6 +119,15 @@ export default function SalesScreen({ navigation }) {
   const creditSales = outstandingCredit;
   const voidedTotal = voidedSales.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
   
+  // Calculate profit for the selected date
+  const todaysProfit = activeSales.reduce((sum, sale) => {
+    const quantity = Number(sale.quantity) || 0;
+    const sellingPrice = Number(sale.unitPrice) || 0;
+    const buyingPrice = Number(sale.product?.buyingPrice) || 0;
+    const profit = (sellingPrice - buyingPrice) * quantity;
+    return sum + profit;
+  }, 0);
+  
   const changeDate = (days) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
@@ -178,6 +187,12 @@ export default function SalesScreen({ navigation }) {
     const isCleared = creditStatus === 'fully_paid';
     const isVoided = item.status === 'voided';
     
+    // Calculate profit for this sale
+    const quantity = Number(item.quantity) || 0;
+    const sellingPrice = Number(item.unitPrice) || 0;
+    const buyingPrice = Number(item.product?.buyingPrice) || 0;
+    const saleProfit = (sellingPrice - buyingPrice) * quantity;
+    
     return (
       <View style={[styles.saleCard, isVoided && styles.voidedCard]}>
         <View style={styles.saleHeader}>
@@ -213,6 +228,11 @@ export default function SalesScreen({ navigation }) {
           <Text style={[styles.saleTotal, isVoided && styles.voidedText]}>
             Total: UGX {formatCurrency(item.totalAmount)}
           </Text>
+          {!isVoided && (
+            <Text style={styles.saleProfit}>
+              Profit: UGX {formatCurrency(saleProfit)}
+            </Text>
+          )}
           {item.customerName && (
             <Text style={[styles.customerInfo, isVoided && styles.voidedText]}>
               Customer: {item.customerName}
@@ -299,6 +319,12 @@ export default function SalesScreen({ navigation }) {
           <Ionicons name="cash-outline" size={24} color="#fff" />
           <Text style={styles.summaryLabel}>{isToday(selectedDate) ? "Today's Sales" : "Sales"}</Text>
           <Text style={styles.summaryAmount}>UGX {formatCurrency(todaysSales)}</Text>
+        </View>
+
+        <View style={[styles.summaryCard, styles.profitCard]}>
+          <Ionicons name="trending-up-outline" size={24} color="#fff" />
+          <Text style={styles.summaryLabel}>{isToday(selectedDate) ? "Today's Profit" : "Profit"}</Text>
+          <Text style={styles.summaryAmount}>UGX {formatCurrency(todaysProfit)}</Text>
         </View>
         
         <View style={styles.summaryRow}>
@@ -481,6 +507,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  profitCard: {
+    backgroundColor: '#2196F3',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -606,6 +639,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#800000',
+  },
+  saleProfit: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2196F3',
   },
   customerInfo: {
     fontSize: 14,
